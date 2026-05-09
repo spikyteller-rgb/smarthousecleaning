@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smarthouse — Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f6f8;--surface:#ffffff;--surface2:#f9fafb;--border:#e5e7eb;--border2:#d1d5db;
+  --txt:#0f172a;--txt2:#475569;--txt3:#94a3b8;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-d:#0f766e;
+  --red:#ef4444;--red-l:#fef2f2;--amber:#f59e0b;--amber-l:#fffbeb;
+  --blue:#3b82f6;--blue-l:#eff6ff;--green:#10b981;--green-l:#ecfdf5;
+  --purple:#8b5cf6;--purple-l:#f5f3ff;
+  --sh-sm:0 1px 3px rgba(0,0,0,.06);--sh:0 4px 16px rgba(0,0,0,.07);--sh-lg:0 12px 40px rgba(0,0,0,.10);
+  --r:14px;--r-sm:9px;--r-xs:6px;--nav:240px;--topbar:60px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px}
+
+/* ── CONFIG BANNER ── */
+#config-banner{background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;padding:14px 24px;text-align:center;font-size:13px;display:flex;align-items:center;justify-content:center;gap:10px}
+#config-banner a{color:var(--teal-m,#99f6e4);font-weight:700;text-decoration:none}
+#config-banner button{background:var(--teal);border:none;color:#fff;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit}
+.teal-m{color:#99f6e4}
+
+/* ── LOADING ── */
+#loading-screen{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── LOGIN ── */
+#login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#f0fdfa,#e0f2fe 50%,#f5f3ff)}
+.lc{background:var(--surface);border-radius:22px;padding:44px 40px;width:420px;max-width:95vw;box-shadow:var(--sh-lg);animation:su .5s cubic-bezier(.16,1,.3,1)}
+.lc-brand{display:flex;align-items:center;gap:10px;margin-bottom:30px}
+.lc-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--teal),var(--teal-d));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.lc-name{font-family:'Instrument Serif',serif;font-size:22px}
+.lc-name b{color:var(--teal)}
+.lc-h{font-size:24px;font-weight:800;margin-bottom:4px}
+.lc-sub{color:var(--txt2);font-size:13px;margin-bottom:28px}
+.fl{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fl label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3)}
+.fi{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:inherit;font-size:14px;color:var(--txt);background:var(--surface2);outline:none;transition:border-color .2s,box-shadow .2s}
+.fi:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+.btn-login{width:100%;padding:13px;background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:opacity .2s,transform .15s;box-shadow:0 4px 14px rgba(13,148,136,.3)}
+.btn-login:hover{opacity:.92;transform:translateY(-1px)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.login-err{background:var(--red-l);color:var(--red);padding:10px 14px;border-radius:var(--r-xs);font-size:13px;margin-bottom:12px;display:none}
+
+/* ── LAYOUT ── */
+#app{display:none;min-height:100vh}
+.topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px 0 calc(var(--nav) + 24px);justify-content:space-between;z-index:50;box-shadow:var(--sh-sm)}
+.tb-left{display:flex;align-items:center;gap:12px}
+.tb-title{font-weight:800;font-size:16px}
+.tb-sub{font-size:12px;color:var(--txt3)}
+.tb-right{display:flex;align-items:center;gap:8px}
+.tb-avatar{width:32px;height:32px;background:linear-gradient(135deg,var(--teal),var(--teal-d));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.tb-user-email{font-size:12px;color:var(--txt3)}
+
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--nav);background:var(--surface);border-right:1px solid var(--border);padding:0;display:flex;flex-direction:column;z-index:60}
+.sb-brand{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--teal),var(--teal-d));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.sb-name{font-family:'Instrument Serif',serif;font-size:18px}
+.sb-name b{color:var(--teal)}
+.sb-nav{flex:1;padding:14px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.sb-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);padding:10px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;color:var(--txt2);font-size:13px;font-weight:500;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--bg);color:var(--txt)}
+.nav-item.active{background:var(--teal-l);color:var(--teal);font-weight:700}
+.nav-item .ni{font-size:16px;width:20px;text-align:center}
+.nav-item .badge{margin-left:auto;background:var(--red);color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700}
+.sb-bottom{padding:14px 12px;border-top:1px solid var(--border)}
+
+.main{margin-left:var(--nav);padding-top:var(--topbar);min-height:100vh}
+.page{display:none;padding:28px}
+.page.active{display:block;animation:fadeIn .3s ease}
+
+/* ── SHARED ── */
+@keyframes su{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
+.ph-left h1{font-size:22px;font-weight:800;margin-bottom:2px}
+.ph-left p{color:var(--txt2);font-size:13px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-teal{background:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(13,148,136,.25)}
+.btn-teal:hover{background:var(--teal-d);transform:translateY(-1px)}
+.btn-outline{background:#fff;border:1.5px solid var(--border2);color:var(--txt2)}
+.btn-outline:hover{background:var(--bg);color:var(--txt)}
+.btn-red{background:var(--red);color:#fff}
+.btn-red:hover{opacity:.88}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--sh-sm)}
+.card-body{padding:20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.stat{padding:20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm)}
+.stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.stat-val{font-size:28px;font-weight:800;line-height:1;margin-bottom:4px}
+.stat-lbl{font-size:12px;color:var(--txt2)}
+.tbl-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);background:var(--surface)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--surface2);border-bottom:1px solid var(--border)}
+th{padding:11px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3)}
+td{padding:13px 16px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-teal{background:var(--teal-l);color:var(--teal-d)}
+.badge-red{background:var(--red-l);color:var(--red)}
+.badge-amber{background:var(--amber-l);color:#92400e}
+.badge-blue{background:var(--blue-l);color:#1e40af}
+.badge-green{background:var(--green-l);color:#065f46}
+.badge-purple{background:var(--purple-l);color:#5b21b6}
+.badge-gray{background:var(--surface2);color:var(--txt2);border:1px solid var(--border)}
+.form-row{display:grid;gap:14px;margin-bottom:14px}
+.form-row.col2{grid-template-columns:1fr 1fr}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3)}
+.fg input,.fg select,.fg textarea{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:inherit;font-size:13px;color:var(--txt);background:var(--surface2);outline:none;transition:border-color .2s,box-shadow .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.08)}
+.fg textarea{resize:vertical;min-height:80px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:200;padding:16px;backdrop-filter:blur(4px)}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:500px;box-shadow:var(--sh-lg);animation:su .3s cubic-bezier(.16,1,.3,1);max-height:90vh;overflow-y:auto}
+.modal-lg{max-width:680px}
+.modal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-h h2{font-size:18px;font-weight:800}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt3);line-height:1;padding:4px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:22px;cursor:pointer;transition:.2s}
+.toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle input:checked+.toggle-slider{background:var(--teal)}
+.toggle input:checked+.toggle-slider::before{transform:translateX(18px)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--txt);color:#fff;padding:12px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:500;box-shadow:var(--sh-lg);z-index:999;animation:slideR .3s cubic-bezier(.16,1,.3,1)}
+@keyframes slideR{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+.pill-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--txt2);transition:all .15s}
+.pill.active,.pill:hover{background:var(--teal);border-color:var(--teal);color:#fff}
+.empty{text-align:center;padding:60px 20px;color:var(--txt3)}
+.empty-emoji{font-size:40px;margin-bottom:12px;opacity:.4}
+.empty-title{font-size:16px;font-weight:700;color:var(--txt2);margin-bottom:4px}
+.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.chart-bar-wrap{display:flex;flex-direction:column;gap:10px}
+.chart-bar-row{display:flex;align-items:center;gap:12px}
+.chart-bar-label{width:90px;font-size:12px;color:var(--txt2);text-align:right;flex-shrink:0}
+.chart-bar-track{flex:1;background:var(--surface2);border-radius:99px;height:10px;overflow:hidden}
+.chart-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--teal-d));transition:width .8s cubic-bezier(.16,1,.3,1)}
+.chart-bar-val{width:60px;font-size:12px;font-weight:600;color:var(--txt2)}
+.donut-wrap{display:flex;align-items:center;gap:24px}
+.donut{width:100px;height:100px;border-radius:50%;background:conic-gradient(var(--teal) 0% 62%,var(--amber) 62% 80%,var(--red) 80% 91%,var(--border2) 91% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
+.donut::after{content:'';position:absolute;width:62px;height:62px;background:#fff;border-radius:50%}
+.donut-legend{display:flex;flex-direction:column;gap:8px}
+.dl{display:flex;align-items:center;gap:8px;font-size:12px}
+.dl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.notif-card{padding:14px 16px;border-radius:var(--r-sm);border:1px solid var(--border);background:#fff;display:flex;gap:12px;align-items:flex-start;transition:box-shadow .15s}
+.notif-card:hover{box-shadow:var(--sh)}
+.notif-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.offer-card{padding:18px;border-radius:var(--r);border:1px solid var(--border);background:#fff;position:relative;overflow:hidden;transition:box-shadow .15s,transform .15s}
+.offer-card:hover{box-shadow:var(--sh);transform:translateY(-2px)}
+.offer-ribbon{position:absolute;top:0;right:0;background:var(--teal);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-bottom-left-radius:8px}
+.staff-card{padding:18px;border-radius:var(--r);border:1px solid var(--border);background:#fff;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;transition:box-shadow .15s,transform .15s}
+.staff-card:hover{box-shadow:var(--sh);transform:translateY(-2px)}
+.staff-av{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff}
+.staff-status{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600}
+.staff-status-dot{width:7px;height:7px;border-radius:50%}
+.review-card{padding:16px 18px;border-radius:var(--r);border:1px solid var(--border);background:#fff;transition:box-shadow .15s}
+.review-card:hover{box-shadow:var(--sh)}
+.search-bar{position:relative}
+.search-bar input{padding-left:34px}
+.search-bar::before{content:'🔍';position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;z-index:1}
+.color-pick{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.cp{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s,border-color .15s}
+.cp:hover,.cp.selected{transform:scale(1.15);border-color:var(--txt)}
+.page-loader{text-align:center;padding:40px;color:var(--txt3)}
+.page-loader .spinner{margin:0 auto 12px;width:28px;height:28px;border-width:2px}
+
+/* CONFIG MODAL */
+.config-modal{background:#fff;border-radius:20px;padding:32px;width:100%;max-width:560px;box-shadow:var(--sh-lg);animation:su .3s cubic-bezier(.16,1,.3,1)}
+.config-modal h2{font-size:20px;font-weight:800;margin-bottom:6px}
+.config-modal p{font-size:13px;color:var(--txt2);margin-bottom:24px;line-height:1.6}
+.code-block{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:var(--r-sm);font-family:monospace;font-size:12px;margin-bottom:16px;overflow-x:auto;white-space:pre}
+.code-block .hl{color:#99f6e4}
+
+@media(max-width:768px){
+  :root{--nav:0px}
+  .sidebar{transform:translateX(-100%)}
+  .topbar{padding-left:16px}
+  .page{padding:20px 16px}
+  .grid4{grid-template-columns:1fr 1fr}
+  .grid3{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  .form-row.col2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ CONFIG BANNER (shown when not configured) ══ -->
+<div id="config-banner" style="display:none">
+  ⚠️ <strong>Supabase not configured.</strong> &nbsp;
+  <span class="teal-m">Add your Project URL and Anon Key to get started.</span>
+  &nbsp;<button onclick="openConfigModal()">Configure Now</button>
+</div>
+
+<!-- ══ LOADING ══ -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:var(--txt3)">Loading Smarthouse…</div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-page" style="display:none">
+  <div class="lc">
+    <div class="lc-brand">
+      <div class="lc-icon">🏠</div>
+      <div class="lc-name">Smart<b>house</b></div>
+    </div>
+    <div class="lc-h">Welcome back</div>
+    <div class="lc-sub">Sign in to manage your cleaning business.</div>
+    <div id="login-err" class="login-err"></div>
+    <div class="fl">
+      <label>Email</label>
+      <input class="fi" id="lu" type="email" placeholder="admin@smarthouse.co.ke" autocomplete="username">
+    </div>
+    <div class="fl">
+      <label>Password</label>
+      <input class="fi" id="lp" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" id="login-btn" onclick="doLogin()">Sign In →</button>
+    <div style="margin-top:14px;text-align:center;font-size:12px;color:var(--txt3)">
+      Powered by <a href="https://supabase.com" target="_blank" style="color:var(--teal);text-decoration:none;font-weight:600">Supabase</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-icon">🏠</div>
+      <div class="sb-name">Smart<b>house</b></div>
+    </div>
+    <div class="sb-nav">
+      <div class="sb-section">Overview</div>
+      <button class="nav-item active" onclick="go('overview',this)"><span class="ni">📊</span>Dashboard</button>
+      <button class="nav-item" onclick="go('orders',this)"><span class="ni">📋</span>Orders <span class="badge" id="pending-badge" style="display:none">0</span></button>
+      <div class="sb-section">Business</div>
+      <button class="nav-item" onclick="go('services',this)"><span class="ni">🧹</span>Services & Prices</button>
+      <button class="nav-item" onclick="go('offers',this)"><span class="ni">🏷️</span>Offers & Discounts</button>
+      <button class="nav-item" onclick="go('staff',this)"><span class="ni">👥</span>Staff</button>
+      <div class="sb-section">Engagement</div>
+      <button class="nav-item" onclick="go('reviews',this)"><span class="ni">⭐</span>Reviews</button>
+      <button class="nav-item" onclick="go('notifications',this)"><span class="ni">🔔</span>Notifications</button>
+      <button class="nav-item" onclick="go('reports',this)"><span class="ni">📈</span>Reports</button>
+      <div class="sb-section">System</div>
+      <button class="nav-item" onclick="go('settings',this)"><span class="ni">⚙️</span>Settings</button>
+    </div>
+    <div class="sb-bottom">
+      <button class="nav-item" onclick="doLogout()" style="color:var(--red)"><span class="ni">🚪</span>Sign Out</button>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <div class="tb-left">
+      <div>
+        <div class="tb-title" id="tb-title">Dashboard</div>
+        <div class="tb-sub" id="tb-date"></div>
+      </div>
+    </div>
+    <div class="tb-right">
+      <div class="tb-user-email" id="tb-email"></div>
+      <div class="tb-avatar" id="tb-avatar">A</div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="ph">
+        <div class="ph-left"><h1>Good morning, Admin 👋</h1><p>Here's what's happening with Smarthouse today.</p></div>
+      </div>
+      <div class="grid4" style="margin-bottom:20px" id="ov-stats"><div class="page-loader"><div class="spinner"></div></div></div>
+      <div class="grid2" style="margin-bottom:20px">
+        <div class="card"><div class="card-body">
+          <div style="font-weight:700;margin-bottom:4px;font-size:15px">Revenue by Service</div>
+          <div style="color:var(--txt2);font-size:12px;margin-bottom:18px">Completed orders</div>
+          <div class="chart-bar-wrap" id="rev-chart"><div class="page-loader"><div class="spinner"></div></div></div>
+        </div></div>
+        <div class="card"><div class="card-body">
+          <div style="font-weight:700;margin-bottom:4px;font-size:15px">Order Status Mix</div>
+          <div style="color:var(--txt2);font-size:12px;margin-bottom:18px">Current breakdown</div>
+          <div class="donut-wrap">
+            <div class="donut" id="ov-donut"></div>
+            <div class="donut-legend" id="donut-legend"></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding-bottom:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-weight:700;font-size:15px">Recent Orders</div>
+            <button class="btn btn-outline btn-sm" onclick="go('orders',document.querySelectorAll('.nav-item')[1])">View All</button>
+          </div>
+        </div>
+        <div class="tbl-wrap" style="border-radius:0;border:none;border-top:1px solid var(--border)">
+          <table><thead><tr><th>Order</th><th>Customer</th><th>Service</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody id="ov-orders-body"><tr><td colspan="5" style="text-align:center;padding:30px"><div class="spinner" style="margin:0 auto;width:24px;height:24px;border-width:2px"></div></td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="page" id="page-orders">
+      <div class="ph">
+        <div class="ph-left"><h1>Orders</h1><p>Track and manage all customer bookings.</p></div>
+        <div class="search-bar"><input class="fi" id="order-search" placeholder="Search orders…" oninput="renderOrders()" style="width:220px"></div>
+      </div>
+      <div class="pill-tabs" id="order-filters">
+        <div class="pill active" onclick="setOrderFilter('All',this)">All</div>
+        <div class="pill" onclick="setOrderFilter('Pending',this)">Pending</div>
+        <div class="pill" onclick="setOrderFilter('In Progress',this)">In Progress</div>
+        <div class="pill" onclick="setOrderFilter('Completed',this)">Completed</div>
+        <div class="pill" onclick="setOrderFilter('Cancelled',this)">Cancelled</div>
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>ID</th><th>Customer</th><th>Service</th><th>Location</th><th>Amount</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="orders-body"><tr><td colspan="8" style="text-align:center;padding:30px"><div class="spinner" style="margin:0 auto;width:24px;height:24px;border-width:2px"></div></td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- SERVICES -->
+    <div class="page" id="page-services">
+      <div class="ph">
+        <div class="ph-left"><h1>Services & Prices</h1><p>Manage your cleaning service catalogue and pricing.</p></div>
+        <button class="btn btn-teal" onclick="openServiceModal()">+ Add Service</button>
+      </div>
+      <div id="services-grid" style="display:grid;gap:14px"></div>
+    </div>
+
+    <!-- OFFERS -->
+    <div class="page" id="page-offers">
+      <div class="ph">
+        <div class="ph-left"><h1>Offers & Discounts</h1><p>Create promotions to attract and retain customers.</p></div>
+        <button class="btn btn-teal" onclick="openOfferModal()">+ New Offer</button>
+      </div>
+      <div id="offers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
+    </div>
+
+    <!-- STAFF -->
+    <div class="page" id="page-staff">
+      <div class="ph">
+        <div class="ph-left"><h1>Staff & Technicians</h1><p>Manage your cleaning team members.</p></div>
+        <button class="btn btn-teal" onclick="openStaffModal()">+ Add Member</button>
+      </div>
+      <div id="staff-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px"></div>
+    </div>
+
+    <!-- REVIEWS -->
+    <div class="page" id="page-reviews">
+      <div class="ph"><div class="ph-left"><h1>Customer Reviews</h1><p>Monitor feedback and manage your reputation.</p></div></div>
+      <div class="grid3" style="margin-bottom:20px" id="review-stats"></div>
+      <div id="reviews-list" style="display:flex;flex-direction:column;gap:12px"></div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="page" id="page-notifications">
+      <div class="ph">
+        <div class="ph-left"><h1>Notifications</h1><p>Send announcements and alerts to customers.</p></div>
+        <button class="btn btn-teal" onclick="openNotifModal()">+ New Notification</button>
+      </div>
+      <div id="notifs-list" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div class="ph">
+        <div class="ph-left"><h1>Reports & Analytics</h1><p>Deep insights into your business performance.</p></div>
+        <button class="btn btn-outline" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="grid4" style="margin-bottom:20px" id="rpt-stats"></div>
+      <div class="grid2" style="margin-bottom:20px">
+        <div class="card card-body">
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px">Top Services by Revenue</div>
+          <div style="font-size:12px;color:var(--txt2);margin-bottom:18px">Completed orders only</div>
+          <div class="chart-bar-wrap" id="rpt-service-chart"></div>
+        </div>
+        <div class="card card-body">
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px">Orders by Status</div>
+          <div style="font-size:12px;color:var(--txt2);margin-bottom:18px">All orders</div>
+          <div class="chart-bar-wrap" id="rpt-status-chart"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding-bottom:0"><div style="font-weight:700;font-size:15px;margin-bottom:16px">Full Order Report</div></div>
+        <div class="tbl-wrap" style="border-radius:0;border:none;border-top:1px solid var(--border)">
+          <table><thead><tr><th>ID</th><th>Customer</th><th>Service</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="rpt-table-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="ph"><div class="ph-left"><h1>Settings</h1><p>Configure your account and system preferences.</p></div></div>
+      <div class="grid2" style="gap:20px">
+        <div class="card card-body">
+          <div style="font-weight:700;font-size:15px;margin-bottom:16px">Supabase Connection</div>
+          <div style="font-size:13px;color:var(--txt2);margin-bottom:12px">Current project URL:</div>
+          <div style="font-size:12px;font-family:monospace;background:var(--surface2);padding:10px 12px;border-radius:var(--r-xs);color:var(--txt);word-break:break-all;margin-bottom:16px" id="settings-url">—</div>
+          <button class="btn btn-outline" onclick="openConfigModal()">🔧 Reconfigure</button>
+        </div>
+        <div class="card card-body">
+          <div style="font-weight:700;font-size:15px;margin-bottom:16px">Account</div>
+          <div style="font-size:13px;color:var(--txt2);margin-bottom:4px">Signed in as</div>
+          <div style="font-weight:600;font-size:14px;margin-bottom:16px" id="settings-email">—</div>
+          <button class="btn btn-red" onclick="doLogout()">Sign Out</button>
+        </div>
+        <div class="card card-body">
+          <div style="font-weight:700;font-size:15px;margin-bottom:16px">System Preferences</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-weight:500;font-size:13px">Email notifications</div><div style="font-size:12px;color:var(--txt3)">Get notified on new orders</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-weight:500;font-size:13px">Auto-confirm bookings</div><div style="font-size:12px;color:var(--txt3)">Skip manual approval</div></div>
+              <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-weight:500;font-size:13px">Show prices publicly</div><div style="font-size:12px;color:var(--txt3)">Display on customer site</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+        </div>
+        <div class="card card-body">
+          <div style="font-weight:700;font-size:15px;margin-bottom:16px">Danger Zone</div>
+          <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">Permanently delete all orders from the database. This cannot be undone.</div>
+          <button class="btn btn-red" onclick="clearAllOrders()">🗑 Clear All Orders</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ MODALS ══ -->
+
+<!-- CONFIG MODAL -->
+<div class="overlay" id="config-modal">
+  <div class="config-modal">
+    <h2>🔧 Configure Supabase</h2>
+    <p>Enter your Supabase project credentials. Find these in your Supabase dashboard under <strong>Project Settings → API</strong>.</p>
+    <div class="fg" style="margin-bottom:14px">
+      <label>Project URL</label>
+      <input type="text" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
+    </div>
+    <div class="fg" style="margin-bottom:20px">
+      <label>Anon / Public Key</label>
+      <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+    </div>
+    <div style="background:var(--teal-l);border-radius:var(--r-sm);padding:14px;margin-bottom:20px;font-size:12px;color:var(--teal-d);line-height:1.6">
+      <strong>📋 Next step:</strong> After saving, run the SQL schema in your Supabase SQL Editor to create all required tables. Click <strong>"View SQL Schema"</strong> below.
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-teal" onclick="saveConfig()">Save & Connect</button>
+      <button class="btn btn-outline" onclick="showSchema()">View SQL Schema</button>
+    </div>
+  </div>
+</div>
+
+<!-- SQL SCHEMA MODAL -->
+<div class="overlay" id="schema-modal">
+  <div class="modal modal-lg">
+    <div class="modal-h"><h2>📄 SQL Schema — Run in Supabase</h2><button class="modal-close" onclick="closeModal('schema-modal')">✕</button></div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">Copy and run this SQL in your Supabase <strong>SQL Editor</strong> to create all required tables.</div>
+    <div style="position:relative">
+      <pre id="schema-pre" style="background:#0f172a;color:#e2e8f0;padding:16px;border-radius:var(--r-sm);font-size:11px;overflow-x:auto;white-space:pre;line-height:1.6;max-height:400px;overflow-y:auto"></pre>
+      <button class="btn btn-teal btn-sm" style="position:absolute;top:8px;right:8px" onclick="copySchema()">Copy SQL</button>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('schema-modal')">Close</button></div>
+  </div>
+</div>
+
+<!-- SERVICE MODAL -->
+<div class="overlay" id="svc-modal">
+  <div class="modal modal-lg">
+    <div class="modal-h"><h2 id="svc-modal-title">Add Service</h2><button class="modal-close" onclick="closeModal('svc-modal')">✕</button></div>
+    <div class="form-row col2">
+      <div class="fg"><label>Service Name</label><input type="text" id="svc-name" placeholder="e.g. Deep Cleaning"></div>
+      <div class="fg"><label>Category</label>
+        <select id="svc-cat"><option>Standard Cleaning</option><option>Deep Cleaning</option><option>Move-In/Out</option><option>Office Cleaning</option><option>Post-Construction</option><option>Carpet Cleaning</option></select>
+      </div>
+    </div>
+    <div class="form-row col2">
+      <div class="fg"><label>Base Price (KSh)</label><input type="number" id="svc-price" placeholder="0"></div>
+      <div class="fg"><label>Duration</label><input type="text" id="svc-dur" placeholder="e.g. 2-3 hours"></div>
+    </div>
+    <div class="form-row"><div class="fg"><label>Description</label><textarea id="svc-desc"></textarea></div></div>
+    <div class="form-row col2">
+      <div class="fg"><label>Min Rooms</label><input type="number" id="svc-minr" placeholder="1" min="1"></div>
+      <div class="fg"><label>Price per Extra Room (KSh)</label><input type="number" id="svc-xr" placeholder="0"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <label class="toggle"><input type="checkbox" id="svc-active" checked><span class="toggle-slider"></span></label>
+      <span style="font-size:13px;font-weight:500">Service is active</span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('svc-modal')">Cancel</button>
+      <button class="btn btn-teal" id="svc-save-btn" onclick="saveService()">Save Service</button>
+    </div>
+  </div>
+</div>
+
+<!-- OFFER MODAL -->
+<div class="overlay" id="offer-modal">
+  <div class="modal">
+    <div class="modal-h"><h2 id="offer-modal-title">New Offer</h2><button class="modal-close" onclick="closeModal('offer-modal')">✕</button></div>
+    <div class="form-row"><div class="fg"><label>Offer Title</label><input type="text" id="off-title" placeholder="e.g. First Booking Discount"></div></div>
+    <div class="form-row col2">
+      <div class="fg"><label>Discount Type</label>
+        <select id="off-type"><option value="percent">Percentage (%)</option><option value="flat">Flat Amount (KSh)</option><option value="free">Free Add-On</option></select>
+      </div>
+      <div class="fg"><label>Value</label><input type="text" id="off-val" placeholder="e.g. 20"></div>
+    </div>
+    <div class="form-row col2">
+      <div class="fg"><label>Valid From</label><input type="date" id="off-from"></div>
+      <div class="fg"><label>Valid Until</label><input type="date" id="off-to"></div>
+    </div>
+    <div class="form-row"><div class="fg"><label>Promo Code</label><input type="text" id="off-code" placeholder="e.g. CLEAN20" style="text-transform:uppercase"></div></div>
+    <div class="form-row"><div class="fg"><label>Description</label><textarea id="off-desc" style="min-height:60px"></textarea></div></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <label class="toggle"><input type="checkbox" id="off-active" checked><span class="toggle-slider"></span></label>
+      <span style="font-size:13px;font-weight:500">Offer is active</span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('offer-modal')">Cancel</button>
+      <button class="btn btn-teal" id="offer-save-btn" onclick="saveOffer()">Save Offer</button>
+    </div>
+  </div>
+</div>
+
+<!-- STAFF MODAL -->
+<div class="overlay" id="staff-modal">
+  <div class="modal">
+    <div class="modal-h"><h2 id="staff-modal-title">Add Staff Member</h2><button class="modal-close" onclick="closeModal('staff-modal')">✕</button></div>
+    <div class="form-row col2">
+      <div class="fg"><label>Full Name</label><input type="text" id="st-name" placeholder="Jane Doe"></div>
+      <div class="fg"><label>Role</label>
+        <select id="st-role"><option>Senior Cleaner</option><option>Junior Cleaner</option><option>Team Lead</option><option>Supervisor</option></select>
+      </div>
+    </div>
+    <div class="form-row col2">
+      <div class="fg"><label>Phone</label><input type="text" id="st-phone" placeholder="+254 7xx xxx xxx"></div>
+      <div class="fg"><label>Zone / Area</label><input type="text" id="st-zone" placeholder="e.g. Westlands"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Avatar Color</label>
+        <div class="color-pick" id="color-pick">
+          <div class="cp selected" style="background:#0d9488" data-color="#0d9488" onclick="pickColor(this)"></div>
+          <div class="cp" style="background:#3b82f6" data-color="#3b82f6" onclick="pickColor(this)"></div>
+          <div class="cp" style="background:#8b5cf6" data-color="#8b5cf6" onclick="pickColor(this)"></div>
+          <div class="cp" style="background:#f59e0b" data-color="#f59e0b" onclick="pickColor(this)"></div>
+          <div class="cp" style="background:#ef4444" data-color="#ef4444" onclick="pickColor(this)"></div>
+          <div class="cp" style="background:#10b981" data-color="#10b981" onclick="pickColor(this)"></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <label class="toggle"><input type="checkbox" id="st-available" checked><span class="toggle-slider"></span></label>
+      <span style="font-size:13px;font-weight:500">Currently available</span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('staff-modal')">Cancel</button>
+      <button class="btn btn-teal" id="staff-save-btn" onclick="saveStaff()">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIF MODAL -->
+<div class="overlay" id="notif-modal">
+  <div class="modal">
+    <div class="modal-h"><h2>Send Notification</h2><button class="modal-close" onclick="closeModal('notif-modal')">✕</button></div>
+    <div class="form-row col2">
+      <div class="fg"><label>Title</label><input type="text" id="nt-title" placeholder="e.g. Special Offer!"></div>
+      <div class="fg"><label>Type</label>
+        <select id="nt-type"><option value="info">ℹ️ Info</option><option value="offer">🏷️ Offer</option><option value="alert">⚠️ Alert</option><option value="success">✅ Update</option></select>
+      </div>
+    </div>
+    <div class="form-row"><div class="fg"><label>Target Audience</label>
+      <select id="nt-audience"><option>All Customers</option><option>New Customers</option><option>Returning Customers</option><option>Pending Orders</option></select>
+    </div></div>
+    <div class="form-row"><div class="fg"><label>Message</label><textarea id="nt-body"></textarea></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('notif-modal')">Cancel</button>
+      <button class="btn btn-teal" id="notif-send-btn" onclick="sendNotif()">Send Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS MODAL -->
+<div class="overlay" id="status-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-h"><h2>Update Status</h2><button class="modal-close" onclick="closeModal('status-modal')">✕</button></div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:16px" id="status-order-info"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="status-options"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('status-modal')">Cancel</button>
+      <button class="btn btn-teal" id="status-confirm-btn" onclick="confirmStatusUpdate()">Update</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   SUPABASE SETUP
+══════════════════════════════════════════ */
+const { createClient } = supabase;
+let sb = null;
+
+const SQL_SCHEMA = `-- Smarthouse Database Schema
+-- Run this in Supabase SQL Editor
+
+-- Enable UUID extension
+create extension if not exists "uuid-ossp";
+
+-- ORDERS table
+create table if not exists orders (
+  id uuid primary key default uuid_generate_v4(),
+  customer text not null,
+  phone text,
+  service text,
+  location text,
+  address text,
+  amount numeric default 0,
+  date date default current_date,
+  status text default 'Pending',
+  notes text,
+  created_at timestamptz default now()
+);
+
+-- SERVICES table
+create table if not exists services (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  cat text,
+  price numeric default 0,
+  dur text,
+  description text,
+  min_rooms int default 1,
+  extra_room numeric default 0,
+  active boolean default true,
+  created_at timestamptz default now()
+);
+
+-- OFFERS table
+create table if not exists offers (
+  id uuid primary key default uuid_generate_v4(),
+  title text not null,
+  type text default 'percent',
+  val text,
+  valid_from date,
+  valid_to date,
+  code text,
+  description text,
+  active boolean default true,
+  created_at timestamptz default now()
+);
+
+-- STAFF table
+create table if not exists staff (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  role text,
+  phone text,
+  zone text,
+  color text default '#0d9488',
+  available boolean default true,
+  jobs int default 0,
+  created_at timestamptz default now()
+);
+
+-- REVIEWS table
+create table if not exists reviews (
+  id uuid primary key default uuid_generate_v4(),
+  customer text not null,
+  service text,
+  rating int default 5,
+  comment text,
+  date date default current_date,
+  approved boolean default false,
+  created_at timestamptz default now()
+);
+
+-- NOTIFICATIONS table
+create table if not exists notifications (
+  id uuid primary key default uuid_generate_v4(),
+  title text not null,
+  type text default 'info',
+  audience text default 'All Customers',
+  body text,
+  date date default current_date,
+  sent boolean default true,
+  created_at timestamptz default now()
+);
+
+-- Row Level Security (enable for all tables)
+alter table orders enable row level security;
+alter table services enable row level security;
+alter table offers enable row level security;
+alter table staff enable row level security;
+alter table reviews enable row level security;
+alter table notifications enable row level security;
+
+-- RLS Policies: allow authenticated users full access
+create policy "Authenticated full access" on orders for all using (auth.role() = 'authenticated');
+create policy "Authenticated full access" on services for all using (auth.role() = 'authenticated');
+create policy "Authenticated full access" on offers for all using (auth.role() = 'authenticated');
+create policy "Authenticated full access" on staff for all using (auth.role() = 'authenticated');
+create policy "Authenticated full access" on reviews for all using (auth.role() = 'authenticated');
+create policy "Authenticated full access" on notifications for all using (auth.role() = 'authenticated');
+
+-- Seed default services
+insert into services (name, cat, price, dur, description, min_rooms, extra_room, active) values
+  ('Basic Home Clean','Standard Cleaning',2500,'2-3 hrs','Dusting, vacuuming, mopping, bathroom & kitchen wipe-down.',1,500,true),
+  ('Deep Cleaning','Deep Cleaning',5500,'4-6 hrs','Full scrub including inside appliances, cabinets, and detailed surfaces.',1,800,true),
+  ('Move-In / Move-Out','Move-In/Out',7000,'5-7 hrs','Complete top-to-bottom clean for property handovers.',1,1000,true),
+  ('Office Cleaning','Office Cleaning',3500,'2-4 hrs','Professional workspace cleaning, sanitization and trash disposal.',1,600,true),
+  ('Carpet Cleaning','Carpet Cleaning',1500,'1-2 hrs','Steam cleaning and stain removal for carpets and rugs.',1,400,false)
+on conflict do nothing;`;
+
+function initSupabase(url, key) {
+  try {
+    sb = createClient(url, key);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function getConfig() {
+  return {
+    url: localStorage.getItem('sh_sb_url') || '',
+    key: localStorage.getItem('sh_sb_key') || ''
+  };
+}
+
+function saveConfig() {
+  const url = document.getElementById('cfg-url').value.trim();
+  const key = document.getElementById('cfg-key').value.trim();
+  if (!url || !key) { toast('⚠️ Both fields are required'); return; }
+  if (!url.includes('supabase.co')) { toast('⚠️ Invalid Supabase URL'); return; }
+  localStorage.setItem('sh_sb_url', url);
+  localStorage.setItem('sh_sb_key', key);
+  initSupabase(url, key);
+  closeModal('config-modal');
+  document.getElementById('config-banner').style.display = 'none';
+  toast('✅ Supabase connected!');
+  showLoginPage();
+}
+
+function openConfigModal() {
+  const cfg = getConfig();
+  document.getElementById('cfg-url').value = cfg.url;
+  document.getElementById('cfg-key').value = cfg.key;
+  openModal('config-modal');
+}
+
+function showSchema() {
+  document.getElementById('schema-pre').textContent = SQL_SCHEMA;
+  closeModal('config-modal');
+  openModal('schema-modal');
+}
+
+function copySchema() {
+  navigator.clipboard.writeText(SQL_SCHEMA).then(() => toast('📋 SQL copied!'));
+}
+
+/* ══════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════ */
+async function doLogin() {
+  if (!sb) { toast('⚠️ Supabase not configured'); openConfigModal(); return; }
+  const email = document.getElementById('lu').value.trim();
+  const pass = document.getElementById('lp').value;
+  if (!email || !pass) { showLoginErr('Please enter email and password'); return; }
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  hideLoginErr();
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false; btn.textContent = 'Sign In →';
+  if (error) { showLoginErr(error.message); return; }
+  showApp(data.user);
+}
+
+async function doLogout() {
+  if (!confirm('Sign out?')) return;
+  await sb.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  showLoginPage();
+}
+
+function showLoginErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+function hideLoginErr() { document.getElementById('login-err').style.display = 'none'; }
+
+function showLoginPage() {
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lp').value = '';
+  hideLoginErr();
+}
+
+function showApp(user) {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const email = user?.email || '';
+  document.getElementById('tb-email').textContent = email;
+  document.getElementById('tb-avatar').textContent = email[0]?.toUpperCase() || 'A';
+  document.getElementById('settings-email').textContent = email;
+  document.getElementById('settings-url').textContent = getConfig().url;
+  document.getElementById('tb-date').textContent = new Date().toLocaleDateString('en-KE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  initApp();
+}
+
+/* ══════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════ */
+async function boot() {
+  const cfg = getConfig();
+  if (!cfg.url || !cfg.key) {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('config-banner').style.display = 'flex';
+    openConfigModal();
+    return;
+  }
+  initSupabase(cfg.url, cfg.key);
+  // Check existing session
+  const { data: { session } } = await sb.auth.getSession();
+  document.getElementById('loading-screen').style.display = 'none';
+  if (session?.user) {
+    showApp(session.user);
+  } else {
+    showLoginPage();
+  }
+}
+
+boot();
+
+/* ══════════════════════════════════════════
+   NAV
+══════════════════════════════════════════ */
+let orderFilter = 'All';
+let editingService = null, editingOffer = null, editingStaff = null;
+let selectedStatusId = null, selectedStatus = null, selectedColor = '#0d9488';
+
+function go(page, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if (btn) btn.classList.add('active');
+  const titles={overview:'Dashboard',orders:'Orders',services:'Services & Prices',offers:'Offers & Discounts',staff:'Staff',reviews:'Reviews',notifications:'Notifications',reports:'Reports',settings:'Settings'};
+  document.getElementById('tb-title').textContent = titles[page]||page;
+  const renders={orders:renderOrders,services:renderServices,offers:renderOffers,staff:renderStaff,reviews:renderReviews,notifications:renderNotifs,reports:renderReports};
+  if(renders[page]) renders[page]();
+}
+
+async function initApp() {
+  await updatePendingBadge();
+  renderOverview();
+}
+
+/* ══════════════════════════════════════════
+   PENDING BADGE
+══════════════════════════════════════════ */
+async function updatePendingBadge() {
+  if (!sb) return;
+  const { count } = await sb.from('orders').select('*', {count:'exact',head:true}).eq('status','Pending');
+  const b = document.getElementById('pending-badge');
+  b.textContent = count||0;
+  b.style.display = count ? 'inline' : 'none';
+}
+
+/* ══════════════════════════════════════════
+   OVERVIEW
+══════════════════════════════════════════ */
+async function renderOverview() {
+  if (!sb) return;
+  const { data: orders } = await sb.from('orders').select('*').order('created_at',{ascending:false});
+  const all = orders||[];
+  const pending = all.filter(o=>o.status==='Pending').length;
+  const completed = all.filter(o=>o.status==='Completed').length;
+  const inprog = all.filter(o=>o.status==='In Progress').length;
+  const canc = all.filter(o=>o.status==='Cancelled').length;
+  const revenue = all.filter(o=>o.status==='Completed').reduce((s,o)=>s+(parseFloat(o.amount)||0),0);
+
+  document.getElementById('ov-stats').innerHTML = `
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#f0fdfa;font-size:20px">📋</div><span class="badge badge-teal">All time</span></div><div class="stat-val">${all.length}</div><div class="stat-lbl">Total Orders</div></div>
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#fffbeb;font-size:20px">⏳</div><span class="badge badge-amber">Action needed</span></div><div class="stat-val" style="color:var(--amber)">${pending}</div><div class="stat-lbl">Pending</div></div>
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#ecfdf5;font-size:20px">✅</div><span class="badge badge-green">Done</span></div><div class="stat-val" style="color:var(--green)">${completed}</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#f0fdfa;font-size:20px">💰</div><span class="badge badge-teal">Earned</span></div><div class="stat-val" style="color:var(--teal);font-size:20px">KSh ${revenue.toLocaleString()}</div><div class="stat-lbl">Revenue</div></div>`;
+
+  // service revenue chart
+  const svcRev = {};
+  all.filter(o=>o.status==='Completed').forEach(o=>{ const k=o.service||'Other'; svcRev[k]=(svcRev[k]||0)+(parseFloat(o.amount)||0); });
+  const entries = Object.entries(svcRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const max = entries[0]?.[1]||1;
+  document.getElementById('rev-chart').innerHTML = entries.length
+    ? entries.map(([k,v])=>`<div class="chart-bar-row"><div class="chart-bar-label" style="width:100px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(v/max*100).toFixed(1)}%"></div></div><div class="chart-bar-val">KSh ${(v/1000).toFixed(0)}k</div></div>`).join('')
+    : '<div style="text-align:center;color:var(--txt3);padding:20px;font-size:13px">No completed orders yet</div>';
+
+  // donut
+  const total = all.length||1;
+  const cp = (completed/total*100).toFixed(1);
+  const pp = ((completed+pending)/total*100).toFixed(1);
+  const rp = ((completed+pending+canc)/total*100).toFixed(1);
+  document.getElementById('ov-donut').style.background = `conic-gradient(var(--teal) 0% ${cp}%,var(--amber) ${cp}% ${pp}%,var(--red) ${pp}% ${rp}%,var(--border2) ${rp}% 100%)`;
+  document.getElementById('donut-legend').innerHTML = `
+    <div class="dl"><div class="dl-dot" style="background:var(--teal)"></div><span style="color:var(--txt2)">Completed</span><b style="margin-left:auto">${completed}</b></div>
+    <div class="dl"><div class="dl-dot" style="background:var(--amber)"></div><span style="color:var(--txt2)">Pending</span><b style="margin-left:auto">${pending}</b></div>
+    <div class="dl"><div class="dl-dot" style="background:var(--red)"></div><span style="color:var(--txt2)">Cancelled</span><b style="margin-left:auto">${canc}</b></div>
+    <div class="dl"><div class="dl-dot" style="background:var(--border2)"></div><span style="color:var(--txt2)">In Progress</span><b style="margin-left:auto">${inprog}</b></div>`;
+
+  // recent orders
+  const recent = all.slice(0,5);
+  const tbody = document.getElementById('ov-orders-body');
+  tbody.innerHTML = recent.length
+    ? recent.map(o=>`<tr><td><span style="font-size:11px;font-weight:700;color:var(--teal)">#${o.id?.slice(-6)||'—'}</span></td><td>${o.customer||'—'}</td><td style="color:var(--txt2)">${o.service||'—'}</td><td style="font-weight:700">KSh ${Number(o.amount||0).toLocaleString()}</td><td>${statusBadge(o.status||'Pending')}</td></tr>`).join('')
+    : `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--txt3)">No orders yet</td></tr>`;
+}
+
+/* ══════════════════════════════════════════
+   ORDERS
+══════════════════════════════════════════ */
+async function renderOrders() {
+  if (!sb) return;
+  document.getElementById('orders-body').innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px"><div class="spinner" style="margin:0 auto;width:24px;height:24px;border-width:2px"></div></td></tr>`;
+  let query = sb.from('orders').select('*').order('created_at',{ascending:false});
+  if (orderFilter !== 'All') query = query.eq('status', orderFilter);
+  const q = (document.getElementById('order-search')?.value||'').trim();
+  if (q) query = query.or(`customer.ilike.%${q}%,service.ilike.%${q}%,location.ilike.%${q}%`);
+  const { data } = await query;
+  const orders = data||[];
+  const tbody = document.getElementById('orders-body');
+  tbody.innerHTML = orders.length
+    ? orders.map(o=>`<tr>
+        <td><span style="font-size:11px;font-weight:700;color:var(--teal)">#${o.id?.slice(-6)||'—'}</span></td>
+        <td><div style="font-weight:500">${o.customer||'—'}</div><div style="font-size:11px;color:var(--txt3)">${o.phone||''}</div></td>
+        <td>${o.service||'—'}</td>
+        <td style="font-size:12px;color:var(--txt2)">📍${o.location||''}</td>
+        <td style="font-weight:700">KSh ${Number(o.amount||0).toLocaleString()}</td>
+        <td style="font-size:12px;color:var(--txt3)">${o.date||''}</td>
+        <td>${statusBadge(o.status||'Pending')}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="openStatusModal('${o.id}','${o.status||'Pending'}','${o.customer||''}','${o.service||''}')">Edit</button></td>
+      </tr>`).join('')
+    : `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--txt3)">No orders found</td></tr>`;
+}
+
+function setOrderFilter(f,el) {
+  orderFilter=f;
+  document.querySelectorAll('#order-filters .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderOrders();
+}
+
+/* ══════════════════════════════════════════
+   SERVICES
+══════════════════════════════════════════ */
+async function renderServices() {
+  if (!sb) return;
+  document.getElementById('services-grid').innerHTML = '<div class="page-loader"><div class="spinner"></div></div>';
+  const { data } = await sb.from('services').select('*').order('created_at');
+  const svcs = data||[];
+  const grid = document.getElementById('services-grid');
+  grid.innerHTML = svcs.length
+    ? svcs.map(s=>`
+      <div class="card card-body" style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-weight:800;font-size:15px">${s.name}</span>
+            ${s.active?'<span class="badge badge-teal">Active</span>':'<span class="badge badge-gray">Inactive</span>'}
+          </div>
+          <span class="badge badge-blue" style="margin-bottom:8px;display:inline-flex">${s.cat}</span>
+          <div style="font-size:13px;color:var(--txt2);margin-bottom:8px">${s.description||''}</div>
+          <div style="display:flex;gap:16px;font-size:12px;color:var(--txt3)">
+            <span>⏱ ${s.dur||'TBD'}</span><span>🛏 From ${s.min_rooms} room(s)</span><span>➕ KSh ${s.extra_room}/extra</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0">
+          <div style="font-size:26px;font-weight:800;color:var(--teal)">KSh ${Number(s.price).toLocaleString()}</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick='editService(${JSON.stringify(s).replace(/'/g,"&#39;")})'>✏️ Edit</button>
+            <button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none" onclick="deleteService('${s.id}')">🗑</button>
+          </div>
+          <label class="toggle"><input type="checkbox" ${s.active?'checked':''} onchange="toggleService('${s.id}',${!s.active})"><span class="toggle-slider"></span></label>
+        </div>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-emoji">🧹</div><div class="empty-title">No services yet</div></div>';
+}
+
+function openServiceModal() { editingService=null; clearServiceForm(); document.getElementById('svc-modal-title').textContent='Add Service'; openModal('svc-modal'); }
+function editService(s) { editingService=s; document.getElementById('svc-name').value=s.name; document.getElementById('svc-cat').value=s.cat; document.getElementById('svc-price').value=s.price; document.getElementById('svc-dur').value=s.dur||''; document.getElementById('svc-desc').value=s.description||''; document.getElementById('svc-minr').value=s.min_rooms||1; document.getElementById('svc-xr').value=s.extra_room||0; document.getElementById('svc-active').checked=s.active; document.getElementById('svc-modal-title').textContent='Edit Service'; openModal('svc-modal'); }
+function clearServiceForm() { ['svc-name','svc-price','svc-dur','svc-desc','svc-minr','svc-xr'].forEach(id=>document.getElementById(id).value=''); document.getElementById('svc-active').checked=true; }
+async function saveService() {
+  const name = document.getElementById('svc-name').value.trim();
+  const price = parseFloat(document.getElementById('svc-price').value)||0;
+  if (!name||!price) { toast('⚠️ Name and price required'); return; }
+  setBtnLoading('svc-save-btn', true);
+  const obj = { name, cat:document.getElementById('svc-cat').value, price, dur:document.getElementById('svc-dur').value, description:document.getElementById('svc-desc').value, min_rooms:parseInt(document.getElementById('svc-minr').value)||1, extra_room:parseFloat(document.getElementById('svc-xr').value)||0, active:document.getElementById('svc-active').checked };
+  const { error } = editingService ? await sb.from('services').update(obj).eq('id',editingService.id) : await sb.from('services').insert(obj);
+  setBtnLoading('svc-save-btn', false);
+  if (error) { toast('❌ '+error.message); return; }
+  closeModal('svc-modal'); renderServices(); toast('✅ Service saved!');
+}
+async function deleteService(id) { if(!confirm('Delete this service?'))return; await sb.from('services').delete().eq('id',id); renderServices(); toast('🗑 Deleted'); }
+async function toggleService(id, val) { await sb.from('services').update({active:val}).eq('id',id); renderServices(); }
+
+/* ══════════════════════════════════════════
+   OFFERS
+══════════════════════════════════════════ */
+async function renderOffers() {
+  if (!sb) return;
+  document.getElementById('offers-grid').innerHTML = '<div class="page-loader"><div class="spinner"></div></div>';
+  const { data } = await sb.from('offers').select('*').order('created_at',{ascending:false});
+  const offers = data||[];
+  const grid = document.getElementById('offers-grid');
+  grid.innerHTML = offers.length
+    ? offers.map(o=>`
+      <div class="offer-card">
+        <div class="offer-ribbon">${o.active?'ACTIVE':'OFF'}</div>
+        <div style="font-weight:800;font-size:15px;margin-bottom:6px;padding-right:50px">${o.title}</div>
+        <div style="font-size:24px;font-weight:800;color:var(--teal);margin-bottom:6px">${o.type==='percent'?o.val+'% OFF':o.type==='flat'?'KSh '+o.val+' OFF':'Free Add-On'}</div>
+        ${o.code?`<span class="badge badge-purple" style="margin-bottom:8px;font-family:monospace">${o.code}</span>`:''}
+        <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">${o.description||''}</div>
+        <div style="font-size:11px;color:var(--txt3)">📅 ${o.valid_from||''} → ${o.valid_to||''}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-outline btn-sm" onclick='editOffer(${JSON.stringify(o).replace(/'/g,"&#39;")})'>✏️ Edit</button>
+            <button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none" onclick="deleteOffer('${o.id}')">🗑</button>
+          </div>
+          <label class="toggle"><input type="checkbox" ${o.active?'checked':''} onchange="toggleOffer('${o.id}',${!o.active})"><span class="toggle-slider"></span></label>
+        </div>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-emoji">🏷️</div><div class="empty-title">No offers yet</div></div>';
+}
+
+function openOfferModal() { editingOffer=null; clearOfferForm(); document.getElementById('offer-modal-title').textContent='New Offer'; openModal('offer-modal'); }
+function editOffer(o) { editingOffer=o; document.getElementById('off-title').value=o.title; document.getElementById('off-type').value=o.type; document.getElementById('off-val').value=o.val; document.getElementById('off-from').value=o.valid_from||''; document.getElementById('off-to').value=o.valid_to||''; document.getElementById('off-code').value=o.code||''; document.getElementById('off-desc').value=o.description||''; document.getElementById('off-active').checked=o.active; document.getElementById('offer-modal-title').textContent='Edit Offer'; openModal('offer-modal'); }
+function clearOfferForm() { ['off-title','off-val','off-from','off-to','off-code','off-desc'].forEach(id=>document.getElementById(id).value=''); document.getElementById('off-active').checked=true; }
+async function saveOffer() {
+  const title = document.getElementById('off-title').value.trim();
+  if (!title) { toast('⚠️ Title required'); return; }
+  setBtnLoading('offer-save-btn', true);
+  const obj = { title, type:document.getElementById('off-type').value, val:document.getElementById('off-val').value, valid_from:document.getElementById('off-from').value||null, valid_to:document.getElementById('off-to').value||null, code:document.getElementById('off-code').value.toUpperCase(), description:document.getElementById('off-desc').value, active:document.getElementById('off-active').checked };
+  const { error } = editingOffer ? await sb.from('offers').update(obj).eq('id',editingOffer.id) : await sb.from('offers').insert(obj);
+  setBtnLoading('offer-save-btn', false);
+  if (error) { toast('❌ '+error.message); return; }
+  closeModal('offer-modal'); renderOffers(); toast('✅ Offer saved!');
+}
+async function deleteOffer(id) { if(!confirm('Delete?'))return; await sb.from('offers').delete().eq('id',id); renderOffers(); toast('🗑 Deleted'); }
+async function toggleOffer(id, val) { await sb.from('offers').update({active:val}).eq('id',id); renderOffers(); }
+
+/* ══════════════════════════════════════════
+   STAFF
+══════════════════════════════════════════ */
+async function renderStaff() {
+  if (!sb) return;
+  document.getElementById('staff-grid').innerHTML = '<div class="page-loader"><div class="spinner"></div></div>';
+  const { data } = await sb.from('staff').select('*').order('created_at');
+  const staff = data||[];
+  const grid = document.getElementById('staff-grid');
+  grid.innerHTML = staff.length
+    ? staff.map(s=>`
+      <div class="staff-card">
+        <div class="staff-av" style="background:${s.color}">${s.name.split(' ').map(n=>n[0]).join('')}</div>
+        <div>
+          <div style="font-weight:800;font-size:14px">${s.name}</div>
+          <div style="font-size:12px;color:var(--txt2);margin-bottom:4px">${s.role}</div>
+          <div class="staff-status"><div class="staff-status-dot" style="background:${s.available?'var(--green)':'var(--red)'}"></div>${s.available?'Available':'Unavailable'}</div>
+        </div>
+        <div style="font-size:12px;color:var(--txt2);text-align:center">
+          <div>📞 ${s.phone||'—'}</div><div style="margin-top:2px">📍 ${s.zone||'—'}</div>
+          <div style="margin-top:4px;font-weight:700;color:var(--teal)">${s.jobs||0} jobs done</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick='editStaff(${JSON.stringify(s).replace(/'/g,"&#39;")})'>✏️ Edit</button>
+          <button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none" onclick="deleteStaff('${s.id}')">🗑</button>
+        </div>
+        <label class="toggle"><input type="checkbox" ${s.available?'checked':''} onchange="toggleStaff('${s.id}',${!s.available})"><span class="toggle-slider"></span></label>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-emoji">👥</div><div class="empty-title">No staff yet</div></div>';
+}
+
+function openStaffModal() { editingStaff=null; clearStaffForm(); document.getElementById('staff-modal-title').textContent='Add Staff Member'; openModal('staff-modal'); }
+function editStaff(s) { editingStaff=s; document.getElementById('st-name').value=s.name; document.getElementById('st-role').value=s.role; document.getElementById('st-phone').value=s.phone||''; document.getElementById('st-zone').value=s.zone||''; document.getElementById('st-available').checked=s.available; selectedColor=s.color||'#0d9488'; document.querySelectorAll('.cp').forEach(c=>{c.classList.toggle('selected',c.dataset.color===s.color);}); document.getElementById('staff-modal-title').textContent='Edit Staff'; openModal('staff-modal'); }
+function clearStaffForm() { ['st-name','st-phone','st-zone'].forEach(id=>document.getElementById(id).value=''); document.getElementById('st-available').checked=true; selectedColor='#0d9488'; document.querySelectorAll('.cp').forEach((c,i)=>c.classList.toggle('selected',i===0)); }
+async function saveStaff() {
+  const name = document.getElementById('st-name').value.trim();
+  if (!name) { toast('⚠️ Name required'); return; }
+  setBtnLoading('staff-save-btn', true);
+  const obj = { name, role:document.getElementById('st-role').value, phone:document.getElementById('st-phone').value, zone:document.getElementById('st-zone').value, color:selectedColor, available:document.getElementById('st-available').checked, jobs:editingStaff?editingStaff.jobs:0 };
+  const { error } = editingStaff ? await sb.from('staff').update(obj).eq('id',editingStaff.id) : await sb.from('staff').insert(obj);
+  setBtnLoading('staff-save-btn', false);
+  if (error) { toast('❌ '+error.message); return; }
+  closeModal('staff-modal'); renderStaff(); toast('✅ Staff saved!');
+}
+async function deleteStaff(id) { if(!confirm('Remove staff member?'))return; await sb.from('staff').delete().eq('id',id); renderStaff(); toast('🗑 Removed'); }
+async function toggleStaff(id, val) { await sb.from('staff').update({available:val}).eq('id',id); renderStaff(); }
+function pickColor(el) { selectedColor=el.dataset.color; document.querySelectorAll('.cp').forEach(c=>c.classList.remove('selected')); el.classList.add('selected'); }
+
+/* ══════════════════════════════════════════
+   REVIEWS
+══════════════════════════════════════════ */
+async function renderReviews() {
+  if (!sb) return;
+  const { data } = await sb.from('reviews').select('*').order('created_at',{ascending:false});
+  const reviews = data||[];
+  const avg = reviews.length ? (reviews.reduce((s,r)=>s+r.rating,0)/reviews.length).toFixed(1) : '—';
+  const approved = reviews.filter(r=>r.approved).length;
+  document.getElementById('review-stats').innerHTML = `
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#fffbeb;font-size:20px">⭐</div></div><div class="stat-val" style="color:var(--amber)">${avg}</div><div class="stat-lbl">Avg Rating</div></div>
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#ecfdf5;font-size:20px">✅</div></div><div class="stat-val" style="color:var(--green)">${approved}</div><div class="stat-lbl">Published</div></div>
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#fef2f2;font-size:20px">⏳</div></div><div class="stat-val" style="color:var(--red)">${reviews.length-approved}</div><div class="stat-lbl">Pending Approval</div></div>`;
+  const list = document.getElementById('reviews-list');
+  list.innerHTML = reviews.length
+    ? reviews.map(r=>`
+      <div class="review-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+              <div class="av" style="background:var(--teal-l);color:var(--teal-d)">${(r.customer||'?')[0]}</div>
+              <div><div style="font-weight:700;font-size:14px">${r.customer}</div><div style="font-size:11px;color:var(--txt3)">${r.service||''} · ${r.date||''}</div></div>
+            </div>
+            <div>${'⭐'.repeat(r.rating||0)}${'☆'.repeat(5-(r.rating||0))}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${r.approved?'<span class="badge badge-green">Published</span>':'<span class="badge badge-amber">Pending</span>'}
+            <button class="btn btn-outline btn-sm" onclick="toggleReview('${r.id}',${!r.approved})">${r.approved?'Unpublish':'Approve'}</button>
+            <button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none" onclick="deleteReview('${r.id}')">🗑</button>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:13px;color:var(--txt2);line-height:1.6;padding:10px 12px;background:var(--surface2);border-radius:var(--r-xs)">"${r.comment||''}"</div>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-emoji">⭐</div><div class="empty-title">No reviews yet</div></div>';
+}
+async function toggleReview(id, val) { await sb.from('reviews').update({approved:val}).eq('id',id); renderReviews(); toast(val?'✅ Published':'Review unpublished'); }
+async function deleteReview(id) { if(!confirm('Delete review?'))return; await sb.from('reviews').delete().eq('id',id); renderReviews(); toast('🗑 Deleted'); }
+
+/* ══════════════════════════════════════════
+   NOTIFICATIONS
+══════════════════════════════════════════ */
+async function renderNotifs() {
+  if (!sb) return;
+  const { data } = await sb.from('notifications').select('*').order('created_at',{ascending:false});
+  const notifs = data||[];
+  const typeColors = {info:'var(--blue)',offer:'var(--teal)',alert:'var(--amber)',success:'var(--green)'};
+  const list = document.getElementById('notifs-list');
+  list.innerHTML = notifs.length
+    ? notifs.map(n=>`
+      <div class="notif-card">
+        <div class="notif-dot" style="background:${typeColors[n.type]||'var(--txt3)'}"></div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <div style="font-weight:700;font-size:14px">${n.title}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="badge badge-gray">${n.audience}</span>
+              <span class="badge ${n.sent?'badge-green':'badge-amber'}">${n.sent?'Sent':'Draft'}</span>
+              <button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none" onclick="deleteNotif('${n.id}')">🗑</button>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--txt2);margin-top:4px">${n.body||''}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:6px">📅 ${n.date||''}</div>
+        </div>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-emoji">🔔</div><div class="empty-title">No notifications sent yet</div></div>';
+}
+function openNotifModal() { openModal('notif-modal'); }
+async function sendNotif() {
+  const title = document.getElementById('nt-title').value.trim();
+  const body = document.getElementById('nt-body').value.trim();
+  if (!title||!body) { toast('⚠️ Title and message required'); return; }
+  setBtnLoading('notif-send-btn', true);
+  const { error } = await sb.from('notifications').insert({ title, type:document.getElementById('nt-type').value, audience:document.getElementById('nt-audience').value, body, date:new Date().toISOString().slice(0,10), sent:true });
+  setBtnLoading('notif-send-btn', false);
+  if (error) { toast('❌ '+error.message); return; }
+  document.getElementById('nt-title').value=''; document.getElementById('nt-body').value='';
+  closeModal('notif-modal'); renderNotifs(); toast('🔔 Notification sent!');
+}
+async function deleteNotif(id) { if(!confirm('Delete?'))return; await sb.from('notifications').delete().eq('id',id); renderNotifs(); toast('🗑 Deleted'); }
+
+/* ══════════════════════════════════════════
+   REPORTS
+══════════════════════════════════════════ */
+async function renderReports() {
+  if (!sb) return;
+  const { data } = await sb.from('orders').select('*').order('created_at',{ascending:false});
+  const orders = data||[];
+  const completed = orders.filter(o=>o.status==='Completed');
+  const revenue = completed.reduce((s,o)=>s+(parseFloat(o.amount)||0),0);
+  const avg = completed.length ? revenue/completed.length : 0;
+  document.getElementById('rpt-stats').innerHTML = `
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#f0fdfa;font-size:18px">📦</div></div><div class="stat-val">${orders.length}</div><div class="stat-lbl">Total Orders</div></div>
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#ecfdf5;font-size:18px">✅</div></div><div class="stat-val" style="color:var(--green)">${completed.length}</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#f0fdfa;font-size:18px">💰</div></div><div class="stat-val" style="color:var(--teal);font-size:18px">KSh ${revenue.toLocaleString()}</div><div class="stat-lbl">Revenue</div></div>
+    <div class="stat"><div class="stat-top"><div class="stat-icon" style="background:#eff6ff;font-size:18px">📊</div></div><div class="stat-val" style="color:var(--blue);font-size:18px">KSh ${avg.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div class="stat-lbl">Avg Order Value</div></div>`;
+
+  const svcRev = {};
+  completed.forEach(o=>{ const k=o.service||'Other'; svcRev[k]=(svcRev[k]||0)+(parseFloat(o.amount)||0); });
+  const svcEntries = Object.entries(svcRev).sort((a,b)=>b[1]-a[1]);
+  const svcMax = svcEntries[0]?.[1]||1;
+  document.getElementById('rpt-service-chart').innerHTML = svcEntries.length
+    ? svcEntries.map(([k,v])=>`<div class="chart-bar-row"><div class="chart-bar-label" style="width:110px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(v/svcMax*100).toFixed(1)}%"></div></div><div class="chart-bar-val">KSh ${(v/1000).toFixed(0)}k</div></div>`).join('')
+    : '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px">No completed orders yet</div>';
+
+  const statuses = ['Pending','In Progress','Completed','Cancelled'];
+  const statusMax = Math.max(...statuses.map(s=>orders.filter(o=>o.status===s).length))||1;
+  document.getElementById('rpt-status-chart').innerHTML = statuses.map(s=>{
+    const c = orders.filter(o=>o.status===s).length;
+    return `<div class="chart-bar-row"><div class="chart-bar-label">${s}</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(c/statusMax*100).toFixed(1)}%"></div></div><div class="chart-bar-val">${c} orders</div></div>`;
+  }).join('');
+
+  const tbody = document.getElementById('rpt-table-body');
+  tbody.innerHTML = orders.length
+    ? orders.map(o=>`<tr><td style="font-size:11px;font-weight:700;color:var(--teal)">#${o.id?.slice(-6)||'—'}</td><td>${o.customer||'—'}</td><td>${o.service||'—'}</td><td style="font-weight:700">KSh ${Number(o.amount||0).toLocaleString()}</td><td style="font-size:12px;color:var(--txt3)">${o.date||''}</td><td>${statusBadge(o.status||'Pending')}</td></tr>`).join('')
+    : `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--txt3)">No orders yet</td></tr>`;
+}
+
+async function exportCSV() {
+  if (!sb) return;
+  const { data } = await sb.from('orders').select('*').order('created_at',{ascending:false});
+  if (!data?.length) { toast('⚠️ No orders to export'); return; }
+  const headers = ['ID','Customer','Phone','Service','Location','Address','Amount','Date','Status'];
+  const rows = data.map(o=>[o.id,o.customer,o.phone,o.service,o.location,o.address,o.amount,o.date,o.status||'Pending'].map(v=>`"${v||''}"`).join(','));
+  const csv = [headers.join(','),...rows].join('\n');
+  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='smarthouse-orders.csv'; a.click();
+  toast('⬇ CSV downloaded!');
+}
+
+/* ══════════════════════════════════════════
+   STATUS MODAL
+══════════════════════════════════════════ */
+function openStatusModal(id, status, customer, service) {
+  selectedStatusId = id;
+  selectedStatus = status;
+  document.getElementById('status-order-info').textContent = `#${id.slice(-6)} — ${service} — ${customer}`;
+  const statuses = [['Pending','⏳','amber'],['In Progress','🔧','blue'],['Completed','✅','green'],['Cancelled','❌','red']];
+  document.getElementById('status-options').innerHTML = statuses.map(([s,icon,c])=>`
+    <div onclick="pickStatus('${s}',this)" style="padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;background:var(--${c}-l);color:var(--${c});border:2px solid ${s===status?'var(--teal)':'transparent'};transition:all .15s">
+      ${icon} ${s}
+    </div>`).join('');
+  openModal('status-modal');
+}
+function pickStatus(s, el) { selectedStatus=s; document.querySelectorAll('#status-options > div').forEach(d=>d.style.borderColor='transparent'); el.style.borderColor='var(--teal)'; }
+async function confirmStatusUpdate() {
+  if (!selectedStatusId) return;
+  setBtnLoading('status-confirm-btn', true);
+  const { error } = await sb.from('orders').update({status:selectedStatus}).eq('id',selectedStatusId);
+  setBtnLoading('status-confirm-btn', false);
+  if (error) { toast('❌ '+error.message); return; }
+  closeModal('status-modal');
+  renderOrders(); renderOverview(); updatePendingBadge();
+  toast(`✅ Status → ${selectedStatus}`);
+}
+
+/* ══════════════════════════════════════════
+   DANGER ZONE
+══════════════════════════════════════════ */
+async function clearAllOrders() {
+  if (!confirm('Delete ALL orders from the database? This cannot be undone.')) return;
+  const { error } = await sb.from('orders').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  if (error) { toast('❌ '+error.message); return; }
+  updatePendingBadge(); renderOverview();
+  toast('🗑 All orders cleared');
+}
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>{ o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }); });
+
+function toast(msg) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); },2800);
+}
+
+function statusBadge(s) {
+  const map={'pending':'badge-amber','in progress':'badge-blue','completed':'badge-green','cancelled':'badge-red'};
+  return `<span class="badge ${map[s.toLowerCase()]||'badge-gray'}">${s}</span>`;
+}
+
+function setBtnLoading(id, loading) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = loading;
+  if (loading) { btn.dataset.orig=btn.textContent; btn.textContent='Saving…'; }
+  else btn.textContent = btn.dataset.orig||'Save';
+}
+</script>
+</body>
+</html>
